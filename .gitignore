@@ -1,9 +1,38 @@
-*.json
-*.csv
-*.png
+cat <<EOT > .gitignore
+# --- C++ Build Artifacts ---
+bin/
 *.o
+*.d
+loadbal_sim
+main  # In case you compiled without -o
+
+# --- Python Environment & Cache ---
+venv/
+__pycache__/
+*.pyc
+
+# --- Data Directories ---
+data/
+
+
+# --- Output/Results Directories ---
+.png
+
+# --- Large Data Files (In case they are in root) ---
+*.csv
+*.dat
+*.parquet
 *.gz
-sort_trace_data.py
-process_2019_json.py
-run_pot_comparison.sh
-plot_comparison_spatial.py
+*.zip
+*.json
+
+
+# --- OS & Editor Configs ---
+.DS_Store
+.vscode/
+.idea/
+
+# --- Specific Scripts to Ignore (As requested) ---
+scripts/process_*.py
+
+EOT
