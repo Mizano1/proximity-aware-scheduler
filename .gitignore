@@ -1,0 +1,65 @@
+# =============================================================
+#  .gitignore - scheduler-sim-final
+# -------------------------------------------------------------
+#  Everything tracked by this repo is source: C++ code, Python
+#  scripts, the Makefile, and the README. Build artefacts,
+#  simulator outputs, parsed trace data and generated figures
+#  are all regenerable and deliberately kept out of version
+#  control.
+# =============================================================
+
+
+# --- C++ build artefacts ---------------------------------------
+bin/
+*.o
+*.obj
+*.exe
+
+
+# --- Simulator outputs (regenerable) ---------------------------
+# Every directory written by run_sweep.py, validate_pod.py,
+# quick_compare.py, replication_study.py, ...
+results/
+results_*/
+
+
+# --- Generated figures -----------------------------------------
+figures/
+*.pdf
+*.png
+
+
+# --- Trace data and trace-driven results -----------------------
+# The raw traces are multi-gigabyte downloads from the Google
+# and Alibaba cluster-trace programmes and should not be
+# committed. The parsed .dat files and their per-experiment
+# results live under data/ and are regenerable via
+# scripts/process_traces.py + scripts/trace_experiment.py.
+data/
+
+
+# --- Python ----------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+
+# --- Editor / IDE ----------------------------------------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+
+# --- OS --------------------------------------------------------
+.DS_Store
+Thumbs.db
