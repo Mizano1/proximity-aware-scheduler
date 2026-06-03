@@ -26,11 +26,12 @@ Simulation::Simulation(int n_, double lambda__, int m_, double mu__,
                        int k_, int L_, int qmax_,
                        int num_clusters_, double comm_cost_,
                        const std::string& trace_file_path,
-                       unsigned long long seed_)
+                       unsigned long long seed_,
+                        double epsilon_)
     : n(n_), lambda_(lambda__), m(m_), mu_(mu__),
       policy(policy_), topology(topology_),
       dist(dist_), k_nbrs(k_nbrs_), k(k_), L(L_), qmax(qmax_),
-      num_clusters(num_clusters_), comm_cost(comm_cost_),
+      num_clusters(num_clusters_), comm_cost(comm_cost_),epsilon(epsilon_),
       T(0.0), q(n_, 0), s_time(n_, 1e30), t_arr(0.0),
       req_dist(0.0), q_mid_hist(qmax_, 0.0),
       arrivals_recorded(0),
@@ -251,7 +252,82 @@ int Simulation::choose_node(int s) {
             }
         }
     }
+    // ---------------------------------------------------------
+    //  Probabilistic policy family
+    //  -----------------------------------------------------
+    //  Inspired by Ying, Srikant, Kang (2015) "The Power of
+    //  Slightly More than One Sample in Randomized Load
+    //  Balancing". With probability (1 - eps) we keep only the
+    //  origin in the candidate set; with probability eps we
+    //  add extra probe(s). The three variants differ in
+    //  whether the extra probe(s) are local, global, or both.
+    //
+    //  Expected total samples compared per arrival:
+    //    probA1 -> 1 + eps      (origin + 1 global w.p. eps)
+    //    probB  -> 1 + eps      (origin + 1 local OR 1 global)
+    //    probC  -> 1 + 2*eps    (origin + 1 local + 1 global
+    //                            w.p. eps)
+    //
+    //  As eps -> 1, probC degenerates into spatialKL with
+    //  k = L = 1; this is used as a sanity check in the sweep.
+    // ---------------------------------------------------------
+    else if (policy == "probA1") {
+        // --- Probabilistic Po2 (uniform-random extra probe) ---
+        std::uniform_real_distribution<double> coin(0.0, 1.0);
+        if (coin(rng) < epsilon) {
+            int r; do { r = U(rng); } while (r == s);
+            candidates.push_back(r);
+        }
+        // else: dispatch to origin directly, no extra probe
+    }
+    else if (policy == "probB") {
+        // --- Probabilistic Local-or-Global extra probe ---
+        // With prob eps/2 sample one local neighbour,
+        // with prob eps/2 sample one random global server,
+        // with prob (1 - eps) keep only the origin.
+        std::uniform_real_distribution<double> coin(0.0, 1.0);
+        double u = coin(rng);
+        if (u < epsilon / 2.0) {
+            // Local probe
+            if (!k_nbrs[s].empty()) {
+                std::uniform_int_distribution<int> nbr_idx(
+                    0, (int)k_nbrs[s].size() - 1);
+                candidates.push_back(k_nbrs[s][nbr_idx(rng)]);
+            }
+        } else if (u < epsilon) {
+            // Global probe
+            int r; do { r = U(rng); } while (r == s);
+            candidates.push_back(r);
+        }
+        // else: origin only
+    }
+    else if (policy == "probC") {
+        // --- Probabilistic Local-AND-Global ---
+        // With prob eps add BOTH a local neighbour and a random
+        // global server. At eps = 1 this is exactly the
+        // spatialKL configuration with k = L = 1.
+        std::uniform_real_distribution<double> coin(0.0, 1.0);
+        if (coin(rng) < epsilon) {
+            std::unordered_set<int> used;
+            used.insert(s);
 
+            // 1. One local neighbour
+            if (!k_nbrs[s].empty()) {
+                std::uniform_int_distribution<int> nbr_idx(
+                    0, (int)k_nbrs[s].size() - 1);
+                int local = k_nbrs[s][nbr_idx(rng)];
+                candidates.push_back(local);
+                used.insert(local);
+            }
+
+            // 2. One random global server (distinct from origin
+            //    and from the local neighbour)
+            int r;
+            do { r = U(rng); } while (used.find(r) != used.end());
+            candidates.push_back(r);
+        }
+        // else: origin only
+    }
     // --- SELECTION : Shortest-Queue among candidates ---
     int best = candidates[0];
     double best_score = 1e30;

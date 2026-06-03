@@ -44,6 +44,7 @@ static void write_metrics_json(const std::string& path,
                                int n, int m, double lambda_, double mu_,
                                int k, int L, int qmax,
                                int num_clusters, double comm_cost,
+                               double epsilon,
                                double total_req_dist,
                                double mean_Q,
                                double mean_W,
@@ -61,6 +62,7 @@ static void write_metrics_json(const std::string& path,
     out << "  \"qmax\": " << qmax << ",\n";
     out << "  \"num_clusters\": " << num_clusters << ",\n";
     out << "  \"comm_cost\": " << comm_cost << ",\n";
+    out << "  \"epsilon\": " << epsilon << ",\n";
     out << "  \"total_req_dist\": " << total_req_dist << ",\n";
     out << "  \"mean_Q\": " << mean_Q << ",\n";
     out << "  \"mean_W\": " << mean_W << ",\n";
@@ -93,7 +95,7 @@ int main(int argc, char* argv[]) {
     std::string trace_file = "";  // optional workload trace file
 
     unsigned long long seed = 123456789ULL;   // RNG seed (override for replication studies)
-
+    double epsilon = 0.0; 
     std::string outdir = "results";
     std::string tag_suffix = "";  // extra tag appended to filenames
 
@@ -111,6 +113,7 @@ int main(int argc, char* argv[]) {
         else if (strcmp(argv[i], "--L")        == 0) L            = std::stoi(argv[++i]);
         else if (strcmp(argv[i], "--clusters") == 0) num_clusters = std::stoi(argv[++i]);
         else if (strcmp(argv[i], "--cost")     == 0) comm_cost    = std::stod(argv[++i]);
+        else if (strcmp(argv[i], "--epsilon")  == 0) epsilon      = std::stod(argv[++i]);
         else if (strcmp(argv[i], "--trace")    == 0) trace_file   = argv[++i];
         else if (strcmp(argv[i], "--seed")     == 0) seed         = std::stoull(argv[++i]);
         else if (strcmp(argv[i], "--outdir")   == 0) outdir       = argv[++i];
@@ -126,7 +129,7 @@ int main(int argc, char* argv[]) {
     std::vector<std::vector<int>> k_nbrs;
     std::vector<std::vector<int>> dist;  // kept empty; topology-based distance is computed in Simulation
 
-    if (policy == "spatialKL") {
+    if (policy == "spatialKL" || policy == "probB" || policy == "probC") {
         if      (topo == "cycle")   k_nbrs = generate_cycle_neighbors(n, k);
         else if (topo == "grid")    k_nbrs = generate_grid_neighbors(n, k);
         else if (topo == "cluster") k_nbrs = generate_cluster_neighbors(n, num_clusters);
@@ -141,7 +144,7 @@ int main(int argc, char* argv[]) {
     std::cout << "..." << std::flush;
 
     Simulation sim(n, lambda, m, mu, policy, topo, dist, k_nbrs, k, L, qmax,
-                   num_clusters, comm_cost, trace_file, seed);
+                   num_clusters, comm_cost, trace_file, seed, epsilon);
 
     SimulationResult result = sim.run();
 
@@ -162,7 +165,7 @@ int main(int argc, char* argv[]) {
 
     write_hist_csv(result.hist, hist_path);
     write_metrics_json(meta_path, policy, topo, n, m, lambda, mu, k, L, qmax,
-                       num_clusters, comm_cost,
+                       num_clusters, comm_cost, epsilon,
                        result.total_req_dist,
                        result.mean_Q,
                        result.mean_W,

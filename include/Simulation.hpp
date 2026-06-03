@@ -52,7 +52,8 @@ public:
                int num_clusters_ = 1,
                double comm_cost_ = 0.0,
                const std::string& trace_file_path = "",
-               unsigned long long seed_ = 123456789ULL);
+               unsigned long long seed_ = 123456789ULL,
+               double epsilon_ = 0.0);
 
     // Runs the event loop until all jobs are processed and returns metrics.
     SimulationResult run();
@@ -76,6 +77,8 @@ private:
     // --- Cluster-specific parameters ---
     int num_clusters;
     double comm_cost;
+    // --- Probabilistic-policy parameter (probA1, probB, probC) ---
+    double epsilon;
 
     // --- Runtime state ---
     double T;                          // accumulated observation time (post-warmup)
